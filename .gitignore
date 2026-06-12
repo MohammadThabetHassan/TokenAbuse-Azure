@@ -1,0 +1,12 @@
+# Captured secrets — never commit real tokens or loot
+*tokens*.json
+*.token
+loot_*
+victim_*
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
