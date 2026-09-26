@@ -9,7 +9,7 @@ stage of the attack chain it answers two questions: *how do I see it?* and *how 
 
 | Attack stage | Detection | Prevention |
 |--------------|-----------|------------|
-| Device-code request | Sign-in logs: `authenticationProtocol = deviceCode` | Conditional Access policy blocking/scoping the flow |
+| Device-code request | Sign-in logs: `AuthenticationProtocol == "deviceCode"` | Conditional Access policy blocking/scoping the flow |
 | Victim completes sign-in | Device-code grant from new/unmanaged device or atypical location | Phishing-resistant MFA; user awareness |
 | Token capture & reuse | Access from impossible-travel locations, new IP/ASN | Sign-in risk policies; short token lifetime |
 | FOCI pivot | Refresh-token redemptions across multiple first-party client IDs | Continuous Access Evaluation (CAE); token revocation |
@@ -65,6 +65,7 @@ SigninLogs
 ```kql
 SigninLogs
 | where TimeGenerated > ago(1d)
+// Counts all distinct apps per user in the window; FOCI clients are all first-party, so tune with a known-FOCI AppId allowlist to cut noise.
 | summarize clients = make_set(AppDisplayName), appCount = dcount(AppId) by UserPrincipalName, bin(TimeGenerated, 1h)
 | where appCount >= 4
 | order by appCount desc
